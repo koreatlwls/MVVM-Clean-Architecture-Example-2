@@ -11,38 +11,42 @@ import androidx.lifecycle.viewModelScope
 import com.example.newsclient.data.model.APIResponse
 import com.example.newsclient.data.util.Resource
 import com.example.newsclient.domain.usecase.GetNewsHeadlinesUseCase
+import com.example.newsclient.domain.usecase.GetSearchedNewsUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.lang.Exception
 
 class NewsViewModel(
-    private val app:Application,
-    private val getNewsHeadlinesUseCase: GetNewsHeadlinesUseCase
+    private val app: Application,
+    private val getNewsHeadlinesUseCase: GetNewsHeadlinesUseCase,
+    private val getSearchedNewsUseCase: GetSearchedNewsUseCase
 ) : AndroidViewModel(app) {
     val newsHeadLines: MutableLiveData<Resource<APIResponse>> = MutableLiveData()
 
     fun getNewsHeadLines(country: String, page: Int) = viewModelScope.launch(Dispatchers.IO) {
         newsHeadLines.postValue(Resource.Loading())
-        try{
-            if(isNetworkAvailable(app)) {
+        try {
+            if (isNetworkAvailable(app)) {
 
                 val apiResult = getNewsHeadlinesUseCase.execute(country, page)
                 newsHeadLines.postValue(apiResult)
-            }else{
+            } else {
                 newsHeadLines.postValue(Resource.Error("Internet is not available"))
             }
 
-        }catch (e: Exception){
+        } catch (e: Exception) {
             newsHeadLines.postValue(Resource.Error(e.message.toString()))
         }
 
     }
 
-    private fun isNetworkAvailable(context: Context?):Boolean{
+    private fun isNetworkAvailable(context: Context?): Boolean {
         if (context == null) return false
-        val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val connectivityManager =
+            context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            val capabilities = connectivityManager.getNetworkCapabilities(connectivityManager.activeNetwork)
+            val capabilities =
+                connectivityManager.getNetworkCapabilities(connectivityManager.activeNetwork)
             if (capabilities != null) {
                 when {
                     capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> {
@@ -66,4 +70,27 @@ class NewsViewModel(
 
     }
 
+    val searchedNews: MutableLiveData<Resource<APIResponse>> = MutableLiveData()
+
+    fun searchNews(
+        searchQuery: String,
+        country: String,
+        page: Int
+    ) = viewModelScope.launch {
+        searchedNews.postValue(Resource.Loading())
+        try {
+            if (isNetworkAvailable(app)) {
+                val response = getSearchedNewsUseCase.execute(
+                    searchQuery,
+                    country,
+                    page
+                )
+                searchedNews.postValue(response)
+            } else {
+                searchedNews.postValue(Resource.Error("No internet connection"))
+            }
+        } catch (e: Exception) {
+            searchedNews.postValue(Resource.Error(e.message.toString()))
+        }
+    }
 }
